@@ -14,7 +14,7 @@ namespace ESGInteligentes.Controllers
                 empresa = "ESG Inteligentes",
                 consumoMensal_kWh = 1250.5,
                 reducaoCO2_ton = 3.2,
-                eficienciaEnergetica = "87%"
+                eficienciaEnergetica = "95%"
             };
 
             return Ok(dados);
