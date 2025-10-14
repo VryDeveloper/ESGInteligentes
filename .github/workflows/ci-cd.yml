@@ -8,8 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-  IMAGE_NAME_LOWER: ${{ lower(github.repository) }}
+  IMAGE_NAME: vrydeveloper/esginteligentes
   PROJECT_FILE: ESGInteligentes.csproj
 
 jobs:
@@ -59,7 +58,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
@@ -86,7 +85,7 @@ jobs:
         run: |
           docker run -d --name esg-staging -p 8081:8080 \
             -e ASPNETCORE_ENVIRONMENT=Staging \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
   deploy-production:
     needs: deploy-staging
@@ -99,4 +98,4 @@ jobs:
         run: |
           docker run -d --name esg-production -p 8080:8080 \
             -e ASPNETCORE_ENVIRONMENT=Production \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
