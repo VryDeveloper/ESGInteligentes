@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -24,19 +25,13 @@ jobs:
       - name: Build release
         run: dotnet build -c Release --no-restore
 
-      - name: Run unit/smoke tests
-        # Se você tiver testes xUnit adicionados rode: dotnet test ...
-        run: |
-          echo "Nenhum teste xUnit configurado? Simulando sucesso."
-          # Se tiver testes use: dotnet test --no-build --verbosity normal
+      - name: Run tests (simulado)
+        run: echo "Nenhum teste xUnit configurado. Simulando sucesso."
 
   docker-build-and-smoke:
     needs: build-and-test
     runs-on: ubuntu-latest
-    services:
-      docker:
-        image: docker:24-dind
-        privileged: true
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,22 +39,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build docker image
-        run: |
-          docker build -t esginteligentes:ci .
+      - name: Build Docker image
+        run: docker build -t esginteligentes:ci .
 
       - name: Run container (smoke test)
         run: |
-          docker run -d --name esg_ci -p 8080:8080 esginteligentes:ci || true
-          # dá ao container alguns segundos pra subir
+          docker run -d --name esg_ci -p 8080:8080 esginteligentes:ci
+          echo "Aguardando container iniciar..."
           sleep 8
-          # smoke test: verificar endpoint health or energia
+          echo "Testando endpoint /api/energia"
           set -o pipefail && curl -f http://localhost:8080/api/energia || (docker logs esg_ci && exit 1)
-          docker stop esg_ci && docker rm esg_ci || true
+          docker stop esg_ci && docker rm esg_ci
 
       - name: Simulated deploy to staging
-        run: echo "Deploy para STAGING (simulado) concluído."
+        run: echo "Deploy para STAGING concluído (simulado)."
 
       - name: Simulated deploy to production
         if: github.ref == 'refs/heads/main'
-        run: echo "Deploy para PRODUCTION (simulado) concluído."
+        run: echo "Deploy para PRODUÇÃO concluído (simulado)."
