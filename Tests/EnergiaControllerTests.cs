@@ -100,7 +100,7 @@ public class EnergiaControllerTests
     public void RegistrarConsumo_ComModelNulo_DeveRetornarBadRequest()
     {
         // Arrange
-        ConsumoModel consumo = null;
+        ConsumoModel consumo = null!;
 
         // Act
         var result = _controller.RegistrarConsumo(consumo);
