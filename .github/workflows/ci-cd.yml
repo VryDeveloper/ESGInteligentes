@@ -1,10 +1,15 @@
-name: CI/CD - ESGInteligentes
+ï»¿name: CI/CD - ESGInteligentes
 
 on:
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PROJECT_FILE: ESGInteligentes.csproj
 
 jobs:
   build-and-test:
@@ -25,12 +30,15 @@ jobs:
       - name: Build release
         run: dotnet build -c Release --no-restore
 
-      - name: Run tests (simulado)
-        run: echo "Nenhum teste xUnit configurado. Simulando sucesso."
+      - name: Run unit tests
+        run: dotnet test --verbosity normal
 
-  docker-build-and-smoke:
+  build-and-push-image:
     needs: build-and-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
@@ -39,21 +47,55 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
-        run: docker build -t esginteligentes:ci .
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run container (smoke test)
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          build-args: |
+            PROJECT_FILE=${{ env.PROJECT_FILE }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  # --- NOVOS JOBS DE DEPLOY ---
+  deploy-staging:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Deploy to Staging
         run: |
-          docker run -d --name esg_ci -p 8080:8080 esginteligentes:ci
-          echo "Aguardando container iniciar..."
-          sleep 8
-          echo "Testando endpoint /api/energia"
-          set -o pipefail && curl -f http://localhost:8080/api/energia || (docker logs esg_ci && exit 1)
-          docker stop esg_ci && docker rm esg_ci
+          docker run -d --name esg-staging -p 8081:8080 \
+            -e ASPNETCORE_ENVIRONMENT=Staging \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-      - name: Simulated deploy to staging
-        run: echo "Deploy para STAGING concluído (simulado)."
-
-      - name: Simulated deploy to production
-        if: github.ref == 'refs/heads/main'
-        run: echo "Deploy para PRODUÇÃO concluído (simulado)."
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+    environment: production
+    
+    steps:
+      - name: Deploy to Production
+        run: |
+          docker run -d --name esg-production -p 8080:8080 \
+            -e ASPNETCORE_ENVIRONMENT=Production \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
