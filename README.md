@@ -115,3 +115,5 @@ EXPOSE 8080
 ENTRYPOINT ["dotnet", "ESGInteligentes.dll"]
 
 ```
+Author - Victor Augusto
+>PROJETO DE APREMDIZADO
